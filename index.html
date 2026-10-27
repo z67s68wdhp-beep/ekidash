@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>駅ダッシュボード</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#185fa5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="駅ダッシュ">
+<style>
+:root{--bg:#f6f5f1;--card:#fff;--tx:#1f1f1d;--tx2:#5f5e5a;--tx3:#888780;--bd:rgba(0,0,0,.12);--ac:#185fa5;--acbg:#e6f1fb;--wn:#854f0b;--wnbg:#faeeda;--dg:#a32d2d;--dgbg:#fcebeb}
+@media (prefers-color-scheme:dark){:root{--bg:#1c1c1a;--card:#262624;--tx:#f1efe8;--tx2:#b4b2a9;--tx3:#888780;--bd:rgba(255,255,255,.16);--ac:#85b7eb;--acbg:#0c447c;--wn:#fac775;--wnbg:#633806;--dg:#f7c1c1;--dgbg:#791f1f}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;padding:env(safe-area-inset-top) env(safe-area-inset-right) calc(env(safe-area-inset-bottom) + 24px) env(safe-area-inset-left)}
+main{max-width:640px;margin:0 auto;padding:0 14px}
+h2{font-size:13px;font-weight:500;color:var(--tx2);margin:22px 0 8px}
+.card{background:var(--card);border:.5px solid var(--bd);border-radius:12px;padding:6px 14px}
+.row{display:flex;gap:10px;padding:10px 0;border-top:.5px solid var(--bd);align-items:flex-start}
+.row:first-child{border-top:0}
+.t{font-size:12px;color:var(--tx3);min-width:44px;padding-top:2px}
+.sub{font-size:12px;color:var(--tx2)}
+a{color:inherit;text-decoration:none}
+.btn,select,input{font:inherit;font-size:14px;color:var(--tx);background:var(--card);border:.5px solid var(--bd);border-radius:8px;padding:8px 12px;min-height:40px}
+.btn:active{opacity:.6}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.bar select{flex:1;min-width:0}
+header{padding-top:10px;display:flex;justify-content:space-between;align-items:baseline}
+header b{font-size:18px;font-weight:500}
+.stamp{font-size:12px;color:var(--tx3)}
+.tk{background:var(--card);border:.5px solid var(--bd);border-radius:8px;display:flex;overflow:hidden;height:36px;align-items:center;margin-top:10px}
+.tk i{font-style:normal;font-size:12px;font-weight:500;background:var(--dgbg);color:var(--dg);padding:0 10px;height:100%;display:flex;align-items:center;flex-shrink:0}
+.tk div{overflow:hidden;flex:1}
+.tk span{display:inline-block;white-space:nowrap;font-size:13px;animation:flow 60s linear infinite;padding-left:12px}
+@keyframes flow{to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.tk span{animation:none}}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.m{background:var(--bg);border-radius:8px;padding:10px 12px}
+.m small{display:block;font-size:12px;color:var(--tx2)}
+.m b{font-size:22px;font-weight:500}
+.hours{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0 8px;text-align:center}
+.hours div{background:var(--bg);border-radius:8px;padding:6px 0;font-size:12px;color:var(--tx2)}
+.hours b{display:block;font-size:15px;font-weight:500;color:var(--tx)}
+.badge{font-size:12px;font-weight:500;padding:1px 8px;border-radius:8px;white-space:nowrap;background:var(--bg);color:var(--tx2)}
+.badge.w{background:var(--wnbg);color:var(--wn)}
+.badge.d{background:var(--dgbg);color:var(--dg)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.chip{font-size:13px;padding:4px 12px;border-radius:16px;border:.5px solid var(--bd);background:var(--card);color:var(--tx2)}
+.chip.on{background:var(--acbg);color:var(--ac);border-color:transparent}
+.note{font-size:12px;color:var(--tx3);padding:8px 0}
+.err{font-size:13px;color:var(--dg);padding:10px 0}
+.res{margin-top:8px}
+.res .row{cursor:pointer}
+footer{font-size:11px;color:var(--tx3);margin-top:24px;line-height:1.7}
+.sp{color:var(--tx3);font-size:13px;padding:10px 0}
+</style>
+</head>
+<body>
+<main>
+<header><b id="title">駅ダッシュボード</b><span class="stamp" id="stamp"></span></header>
+
+<div class="bar">
+  <select id="st" aria-label="駅を選ぶ"></select>
+  <button class="btn" id="gps">現在地の駅</button>
+</div>
+<div class="bar">
+  <input id="q" type="search" placeholder="駅名を検索（例: 渋谷）" style="flex:1;min-width:0" enterkeyhint="search">
+  <button class="btn" id="go">検索</button>
+  <button class="btn" id="del" aria-label="この駅を削除">削除</button>
+</div>
+<div class="res card" id="res" hidden></div>
+
+<div class="tk"><i>速報</i><div><span id="tick">読み込み中…</span></div></div>
+
+<h2>天気（駅周辺）</h2>
+<div class="card" id="weather"><div class="sp">読み込み中…</div></div>
+
+<h2>地震情報</h2>
+<div class="card" id="quake"><div class="sp">読み込み中…</div></div>
+
+<h2 id="hLocal">駅周辺のニュース</h2>
+<div class="card" id="local"><div class="sp">読み込み中…</div></div>
+
+<h2>駅周辺の飲食店</h2>
+<div class="bar" style="margin:0 0 8px">
+  <select id="rad" aria-label="検索範囲">
+    <option value="300">半径300m</option>
+    <option value="500" selected>半径500m</option>
+    <option value="800">半径800m</option>
+  </select>
+</div>
+<div class="chips" id="chips"></div>
+<div class="card" id="food"><div class="sp">読み込み中…</div></div>
+
+<h2>全国のニュース</h2>
+<div class="card" id="news"><div class="sp">読み込み中…</div></div>
+
+<div class="bar" style="margin-top:16px"><button class="btn" id="reload" style="flex:1">最新に更新</button></div>
+
+<footer>
+天気: Open-Meteo / 地震: P2P地震情報 / ニュース: NHK、Googleニュース（rss2json経由）<br>
+飲食店: © OpenStreetMap contributors（Overpass API）。掲載漏れや閉店済みの店が含まれることがあります。
+</footer>
+</main>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+const DEFAULTS = [
+  { name: "仙台駅", lat: 38.2601, lon: 140.8824 },
+  { name: "東京駅", lat: 35.6812, lon: 139.7671 },
+  { name: "新宿駅", lat: 35.6896, lon: 139.7006 },
+  { name: "渋谷駅", lat: 35.658, lon: 139.7016 },
+  { name: "名古屋駅", lat: 35.1709, lon: 136.8815 },
+  { name: "大阪駅", lat: 34.7025, lon: 135.4959 },
+  { name: "博多駅", lat: 33.5897, lon: 130.4207 },
+  { name: "札幌駅", lat: 43.0687, lon: 141.3508 }
+];
+
+let stations, cur;
+try { stations = JSON.parse(localStorage.getItem("stations") || "null"); } catch (e) { stations = null; }
+if (!Array.isArray(stations) || !stations.length) stations = DEFAULTS.slice();
+cur = Number(localStorage.getItem("cur") || 0);
+if (!(cur >= 0 && cur < stations.length)) cur = 0;
+let foodAll = [], foodFilter = "all", foodLimit = 25, natHeads = [], quakeLine = "", lastLoad = 0;
+
+function saveState() {
+  localStorage.setItem("stations", JSON.stringify(stations));
+  localStorage.setItem("cur", String(cur));
+}
+function station() { return stations[cur]; }
+
+function cset(k, v) { try { localStorage.setItem("c:" + k, JSON.stringify({ t: Date.now(), v })); } catch (e) {} }
+function cget(k) { try { return JSON.parse(localStorage.getItem("c:" + k)); } catch (e) { return null; } }
+
+async function jget(url, opt) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 20000);
+  try {
+    const r = await fetch(url, Object.assign({ signal: ctl.signal }, opt || {}));
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return await r.json();
+  } finally { clearTimeout(timer); }
+}
+
+async function load(boxId, key, fetcher, draw) {
+  const box = $(boxId);
+  try {
+    const data = await fetcher();
+    cset(key, data);
+    box.innerHTML = draw(data);
+    return data;
+  } catch (e) {
+    const c = cget(key);
+    if (c) {
+      const d = new Date(c.t);
+      box.innerHTML = draw(c.v) + '<div class="note">通信できないため、' + d.getHours() + ":" + String(d.getMinutes()).padStart(2, "0") + " 時点の情報を表示しています。</div>";
+      return c.v;
+    }
+    box.innerHTML = '<div class="err">取得できませんでした。通信状況を確認して、もう一度更新してください。</div>';
+    return null;
+  }
+}
+
+function fmtDate(v) {
+  let d;
+  if (/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/.test(v || "")) d = new Date(v.replace(" ", "T") + "Z");
+  else d = new Date(v);
+  if (isNaN(d)) return "";
+  return d.toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
+const WCODE = (c) => {
+  if (c === 0) return "快晴";
+  if (c === 1) return "晴れ";
+  if (c === 2) return "薄曇り";
+  if (c === 3) return "曇り";
+  if (c === 45 || c === 48) return "霧";
+  if (c >= 51 && c <= 57) return "霧雨";
+  if (c >= 61 && c <= 67) return "雨";
+  if (c >= 71 && c <= 77) return "雪";
+  if (c >= 80 && c <= 82) return "にわか雨";
+  if (c === 85 || c === 86) return "にわか雪";
+  if (c >= 95) return "雷雨";
+  return "";
+};
+
+/* 天気 */
+function weatherUrl(s) {
+  return "https://api.open-meteo.com/v1/forecast?latitude=" + s.lat + "&longitude=" + s.lon +
+    "&current=temperature_2m,weather_code&hourly=temperature_2m,precipitation_probability,weather_code" +
+    "&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code&timezone=Asia%2FTokyo&forecast_days=2";
+}
+function drawWeather(d) {
+  const cur = d.current, day = d.daily, h = d.hourly;
+  const nowKey = cur.time.slice(0, 13);
+  let i = h.time.findIndex((t) => t.slice(0, 13) === nowKey);
+  if (i < 0) i = 0;
+  let hours = "";
+  for (let k = 0; k < 8; k++) {
+    const j = i + 3 * (k + 1);
+    if (j >= h.time.length) break;
+    hours += "<div>" + Number(h.time[j].slice(11, 13)) + "時<b>" + Math.round(h.temperature_2m[j]) + "°</b>" +
+      esc(WCODE(h.weather_code[j])) + "<br>" + (h.precipitation_probability[j] == null ? "-" : h.precipitation_probability[j]) + "%</div>";
+  }
+  return '<div class="grid" style="margin:10px 0"><div class="m"><small>いま ' + esc(WCODE(cur.weather_code)) + "</small><b>" + Math.round(cur.temperature_2m) + "℃</b></div>" +
+    '<div class="m"><small>今日 ' + esc(WCODE(day.weather_code[0])) + "</small><b>" + Math.round(day.temperature_2m_max[0]) + "° / " + Math.round(day.temperature_2m_min[0]) +
+    '°</b></div></div><div class="sub">降水確率（今日の最大）' + (day.precipitation_probability_max[0] == null ? "-" : day.precipitation_probability_max[0]) +
+    '%　明日 ' + esc(WCODE(day.weather_code[1])) + " " + Math.round(day.temperature_2m_max[1]) + "° / " + Math.round(day.temperature_2m_min[1]) + '°</div><div class="hours">' + hours + "</div>";
+}
+
+/* 地震 */
+const SCALE = { 10: "1", 20: "2", 30: "3", 40: "4", 45: "5弱", 50: "5強", 55: "6弱", 60: "6強", 70: "7" };
+const TSUNAMI = { None: "津波の心配なし", Unknown: "津波の有無は不明", Checking: "津波の有無を調査中", NonEffective: "若干の海面変動の可能性（被害の心配なし）", Watch: "津波注意報が出ています", Warning: "津波予報が出ています" };
+function drawQuake(list) {
+  const rows = list.filter((e) => e.earthquake).slice(0, 8);
+  if (!rows.length) return '<div class="sp">地震情報はありません。</div>';
+  quakeLine = "";
+  const html = rows.map((e, n) => {
+    const q = e.earthquake, sc = SCALE[q.maxScale] || "不明";
+    const cls = q.maxScale >= 50 ? "d" : q.maxScale >= 30 ? "w" : "";
+    const mag = q.hypocenter && q.hypocenter.magnitude > 0 ? "M" + q.hypocenter.magnitude : "";
+    const depth = q.hypocenter && q.hypocenter.depth >= 0 ? (q.hypocenter.depth === 0 ? "ごく浅い" : "深さ約" + q.hypocenter.depth + "km") : "";
+    const place = (q.hypocenter && q.hypocenter.name) || "震源調査中";
+    if (n === 0) quakeLine = q.time.slice(11, 16) + " " + place + " 最大震度" + sc;
+    return '<div class="row"><span class="t">' + esc(q.time.slice(5, 16).replace(/^0/, "").replace(/\/0/, "/")) + '</span><div style="flex:1;min-width:0"><div style="font-weight:500">' + esc(place) +
+      '</div><div class="sub">' + esc([mag, depth, TSUNAMI[q.domesticTsunami] || ""].filter(Boolean).join(" / ")) + '</div></div><span class="badge ' + cls + '">震度' + esc(sc) + "</span></div>";
+  }).join("");
+  return html;
+}
+
+/* RSS */
+async function rss(url) {
+  try {
+    const d = await jget("https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(url));
+    if (d.status === "ok" && d.items && d.items.length) return d.items.map((x) => ({ title: x.title, link: x.link, date: x.pubDate }));
+    throw new Error("empty");
+  } catch (e) {
+    const r = await fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(url));
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const x = new DOMParser().parseFromString(await r.text(), "text/xml");
+    const items = [...x.querySelectorAll("item")].map((i) => ({
+      title: (i.querySelector("title") || {}).textContent || "",
+      link: (i.querySelector("link") || {}).textContent || "",
+      date: (i.querySelector("pubDate") || {}).textContent || ""
+    }));
+    if (!items.length) throw new Error("empty");
+    return items;
+  }
+}
+function safeLink(u) { return /^https?:\/\//.test(u || "") ? u : "#"; }
+function drawNews(items, withSource) {
+  if (!items.length) return '<div class="sp">ニュースが見つかりませんでした。</div>';
+  return items.map((x) => {
+    let title = x.title || "", src = "";
+    if (withSource) {
+      const m = title.match(/^(.*)\s-\s([^-]+)$/);
+      if (m) { title = m[1]; src = m[2]; }
+    }
+    return '<a class="row" href="' + esc(safeLink(x.link)) + '" target="_blank" rel="noopener"><span class="t">' + esc(fmtDate(x.date)) + '</span><div style="flex:1;line-height:1.5">' + esc(title) +
+      (src ? '<div class="sub">' + esc(src) + "</div>" : "") + "</div></a>";
+  }).join("");
+}
+function sortByDate(items) {
+  const val = (x) => { const s = /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/.test(x.date || "") ? x.date.replace(" ", "T") + "Z" : x.date; const t = new Date(s).getTime(); return isNaN(t) ? 0 : t; };
+  return items.slice().sort((a, b) => val(b) - val(a));
+}
+
+/* 飲食店 */
+const TYPE = { restaurant: "レストラン", cafe: "カフェ", fast_food: "ファストフード", bar: "バー", pub: "パブ" };
+const CUISINE = { ramen: "ラーメン", sushi: "寿司", japanese: "和食", chinese: "中華", italian: "イタリアン", pizza: "ピザ", burger: "ハンバーガー", coffee_shop: "コーヒー", curry: "カレー", udon: "うどん", soba: "そば", yakiniku: "焼肉", izakaya: "居酒屋", korean: "韓国料理", french: "フレンチ", steak_house: "ステーキ", tonkatsu: "とんかつ", chicken: "鶏料理", noodle: "麺類", seafood: "海鮮", thai: "タイ料理", indian: "インド料理", sandwich: "サンドイッチ", donburi: "丼", regional: "郷土料理", okonomiyaki: "お好み焼き", tempura: "天ぷら", unagi: "うなぎ", gyoza: "餃子", yakitori: "焼き鳥", kaiseki: "懐石", vegetarian: "ベジタリアン", bakery: "ベーカリー", ice_cream: "アイス", tea: "お茶", dessert: "スイーツ" };
+const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+
+function dist(a, b, c, d) {
+  const R = 6371000, r = Math.PI / 180;
+  const dLat = (c - a) * r, dLon = (d - b) * r;
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+async function overpass(q) {
+  let last;
+  for (const ep of OVERPASS) {
+    try { return await jget(ep, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "data=" + encodeURIComponent(q) }); }
+    catch (e) { last = e; }
+  }
+  throw last;
+}
+async function fetchFood(s, rad) {
+  const q = '[out:json][timeout:25];nwr["amenity"~"^(restaurant|cafe|fast_food|bar|pub)$"]["name"](around:' + rad + "," + s.lat + "," + s.lon + ");out center 150;";
+  const d = await overpass(q);
+  return d.elements.map((e) => {
+    const t = e.tags || {}, la = e.lat != null ? e.lat : (e.center || {}).lat, lo = e.lon != null ? e.lon : (e.center || {}).lon;
+    if (la == null) return null;
+    const cu = (t.cuisine || "").split(";").map((c) => CUISINE[c.trim()] || "").filter(Boolean).slice(0, 2);
+    return { name: t["name:ja"] || t.name, type: t.amenity, cuisine: cu, hours: t.opening_hours || "", d: Math.round(dist(s.lat, s.lon, la, lo)) };
+  }).filter(Boolean).sort((a, b) => a.d - b.d);
+}
+function drawChips() {
+  const kinds = [["all", "すべて"], ["restaurant", "レストラン"], ["cafe", "カフェ"], ["fast_food", "ファストフード"], ["bar", "バー・パブ"]];
+  $("chips").innerHTML = kinds.map((k) => '<button class="chip' + (foodFilter === k[0] ? " on" : "") + '" data-k="' + k[0] + '">' + k[1] + "</button>").join("");
+}
+function drawFood() {
+  const s = station();
+  let list = foodAll.filter((x) => foodFilter === "all" || x.type === foodFilter || (foodFilter === "bar" && x.type === "pub"));
+  if (!list.length) { $("food").innerHTML = '<div class="sp">該当するお店が見つかりませんでした。</div>'; return; }
+  const shown = list.slice(0, foodLimit);
+  $("food").innerHTML = shown.map((x) => {
+    const url = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(x.name + " " + s.name);
+    const info = [TYPE[x.type] || "", x.cuisine.join("・")].filter(Boolean).join(" / ");
+    return '<a class="row" href="' + url + '" target="_blank" rel="noopener"><div style="flex:1;min-width:0"><div style="font-weight:500">' + esc(x.name) + '</div><div class="sub">' + esc(info) +
+      (x.hours ? " ・ " + esc(x.hours.slice(0, 40)) : "") + '</div></div><span class="badge">徒歩' + Math.max(1, Math.ceil(x.d / 80)) + "分</span></a>";
+  }).join("") + (list.length > shown.length ? '<div class="row" style="justify-content:center"><button class="btn" id="more">もっと見る（残り' + (list.length - shown.length) + "件）</button></div>" : "") +
+    '<div class="note">Googleマップで開きます。営業時間はOpenStreetMapの登録情報です。</div>';
+}
+async function loadFood() {
+  const s = station(), rad = Number($("rad").value);
+  const key = "f:" + s.name + ":" + rad;
+  try {
+    foodAll = await fetchFood(s, rad);
+    cset(key, foodAll);
+    foodLimit = 25;
+    drawChips(); drawFood();
+  } catch (e) {
+    const c = cget(key);
+    if (c) { foodAll = c.v; drawChips(); drawFood(); $("food").insertAdjacentHTML("beforeend", '<div class="note">通信できないため、前回の情報を表示しています。</div>'); }
+    else { foodAll = []; $("food").innerHTML = '<div class="err">お店の情報を取得できませんでした。混み合っている可能性があります。少し待ってから更新してください。</div>'; }
+  }
+}
+
+/* ティッカー */
+function updateTicker() {
+  const parts = [];
+  if (quakeLine) parts.push("地震 " + quakeLine);
+  natHeads.slice(0, 6).forEach((t) => parts.push(t));
+  const text = parts.length ? parts.join("　　／　　") : "情報を取得中…";
+  const el = $("tick");
+  el.textContent = text + "　　／　　" + text;
+  el.style.animationDuration = Math.max(40, Math.round(text.length * 0.5)) + "s";
+}
+
+/* 全体の読み込み */
+async function loadAll() {
+  const s = station();
+  $("title").textContent = s.name;
+  $("hLocal").textContent = s.name + "周辺のニュース";
+  $("stamp").textContent = "更新中…";
+  lastLoad = Date.now();
+  const tasks = [
+    load("weather", "w:" + s.name, () => jget(weatherUrl(s)), drawWeather),
+    load("quake", "q", () => jget("https://api.p2pquake.net/v2/history?codes=551&limit=12"), drawQuake).then(updateTicker),
+    load("local", "ln:" + s.name, async () => sortByDate(await rss("https://news.google.com/rss/search?q=" + encodeURIComponent(s.name) + "&hl=ja&gl=JP&ceid=JP:ja")).slice(0, 8), (d) => drawNews(d, true)),
+    load("news", "nat", async () => (await rss("https://www3.nhk.or.jp/rss/news/cat0.xml")).slice(0, 10), (d) => { natHeads = d.map((x) => x.title); return drawNews(d, false); }).then(updateTicker),
+    loadFood()
+  ];
+  await Promise.all(tasks);
+  updateTicker();
+  const n = new Date();
+  $("stamp").textContent = n.getHours() + ":" + String(n.getMinutes()).padStart(2, "0") + " 更新";
+}
+
+/* 駅の管理 */
+function renderSelect() {
+  $("st").innerHTML = stations.map((s, i) => '<option value="' + i + '"' + (i === cur ? " selected" : "") + ">" + esc(s.name) + "</option>").join("");
+  $("del").disabled = stations.length <= 1;
+}
+function addStation(s) {
+  const i = stations.findIndex((x) => x.name === s.name && dist(x.lat, x.lon, s.lat, s.lon) < 500);
+  if (i >= 0) cur = i;
+  else { stations.unshift(s); if (stations.length > 15) stations.pop(); cur = 0; }
+  saveState(); renderSelect(); loadAll();
+}
+async function searchStation() {
+  let q = $("q").value.trim();
+  if (!q) return;
+  if (!/駅$/.test(q)) q += "駅";
+  const res = $("res");
+  res.hidden = false;
+  res.innerHTML = '<div class="sp">検索中…</div>';
+  try {
+    const d = await jget("https://nominatim.openstreetmap.org/search?q=" + encodeURIComponent(q) + "&format=jsonv2&limit=10&countrycodes=jp&accept-language=ja");
+    let list = d.filter((x) => x.category === "railway" || x.type === "station" || x.type === "halt");
+    if (!list.length) list = d;
+    const seen = {};
+    list = list.filter((x) => { const k = (x.name || x.display_name.split(",")[0]) + Math.round(x.lat * 100) + Math.round(x.lon * 100); if (seen[k]) return false; seen[k] = 1; return true; }).slice(0, 6);
+    if (!list.length) { res.innerHTML = '<div class="sp">見つかりませんでした。別の表記でお試しください。</div>'; return; }
+    res.innerHTML = list.map((x, i) => {
+      const parts = x.display_name.split(",").map((p) => p.trim());
+      return '<div class="row" data-i="' + i + '"><div style="flex:1"><div style="font-weight:500">' + esc(x.name || parts[0]) + '</div><div class="sub">' + esc(parts.slice(1, 4).join(" ")) + "</div></div></div>";
+    }).join("");
+    res._list = list;
+  } catch (e) {
+    res.innerHTML = '<div class="err">検索に失敗しました。時間をおいて再度お試しください。</div>';
+  }
+}
+function nearestStation() {
+  const res = $("res");
+  res.hidden = false;
+  if (!navigator.geolocation) { res.innerHTML = '<div class="err">この端末では位置情報を使えません。</div>'; return; }
+  res.innerHTML = '<div class="sp">現在地を取得中…</div>';
+  navigator.geolocation.getCurrentPosition(async (p) => {
+    const la = p.coords.latitude, lo = p.coords.longitude;
+    try {
+      const d = await overpass('[out:json][timeout:20];nwr["railway"="station"]["name"](around:2500,' + la + "," + lo + ");out center 40;");
+      const c = d.elements.map((e) => {
+        const t = e.tags || {}, y = e.lat != null ? e.lat : (e.center || {}).lat, x = e.lon != null ? e.lon : (e.center || {}).lon;
+        if (y == null) return null;
+        let name = t["name:ja"] || t.name;
+        if (!/駅$/.test(name)) name += "駅";
+        return { name, lat: y, lon: x, d: dist(la, lo, y, x) };
+      }).filter(Boolean).sort((a, b) => a.d - b.d);
+      if (!c.length) { res.innerHTML = '<div class="sp">近くに駅が見つかりませんでした。駅名で検索してください。</div>'; return; }
+      res.hidden = true;
+      addStation({ name: c[0].name, lat: c[0].lat, lon: c[0].lon });
+    } catch (e) {
+      res.innerHTML = '<div class="err">最寄り駅を取得できませんでした。</div>';
+    }
+  }, () => { res.innerHTML = '<div class="err">位置情報の許可が必要です。設定から許可するか、駅名で検索してください。</div>'; }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 });
+}
+
+$("st").addEventListener("change", (e) => { cur = Number(e.target.value); saveState(); loadAll(); });
+$("go").addEventListener("click", searchStation);
+$("q").addEventListener("keydown", (e) => { if (e.key === "Enter") searchStation(); });
+$("gps").addEventListener("click", nearestStation);
+$("del").addEventListener("click", () => { if (stations.length <= 1) return; stations.splice(cur, 1); cur = 0; saveState(); renderSelect(); loadAll(); });
+$("res").addEventListener("click", (e) => {
+  const row = e.target.closest(".row[data-i]");
+  if (!row) return;
+  const x = $("res")._list[Number(row.dataset.i)];
+  $("res").hidden = true; $("q").value = "";
+  addStation({ name: x.name || x.display_name.split(",")[0].trim(), lat: Number(x.lat), lon: Number(x.lon) });
+});
+$("chips").addEventListener("click", (e) => { const b = e.target.closest(".chip"); if (!b) return; foodFilter = b.dataset.k; foodLimit = 25; drawChips(); drawFood(); });
+$("food").addEventListener("click", (e) => { if (e.target.id === "more") { foodLimit += 25; drawFood(); } });
+$("rad").addEventListener("change", loadFood);
+$("reload").addEventListener("click", loadAll);
+document.addEventListener("visibilitychange", () => { if (!document.hidden && Date.now() - lastLoad > 5 * 60 * 1000) loadAll(); });
+setInterval(() => { if (!document.hidden && Date.now() - lastLoad > 5 * 60 * 1000) loadAll(); }, 60 * 1000);
+
+renderSelect(); drawChips(); loadAll();
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>
